@@ -16,15 +16,21 @@ function youtubeDL(url, type){
     return [
         `${url}`,
         `-o`,
-        `${name}-${type}`
+        `working/${name}-${type}`
     ]
 }
 
 const video_cmd = youtubeDL(video, 'video');
 const video_dl = cp.spawn('youtube-dl', video_cmd);
+var video_name, audio_name;
 
 video_dl.stdout.on('data', (data) => {
   console.log(`video stdout: ${data}`);
+  // console.log(typeof data);
+  if(String(data).includes('Merging')){
+      video_name = String(data).split(' ')[4].replace(/["\n]/g, '');
+      console.log('video name', video_name);
+  }
 });
 
 video_dl.stderr.on('data', (data) => {
@@ -39,6 +45,12 @@ video_dl.on('close',  (code) => {
 
   audio_dl.stdout.on('data', (data) => {
     console.log(`audio stdout: ${data}`);
+    if(String(data).includes('Merging')){
+        audio_name = String(data).split(' ')[4].replace(/["\n]/g, '');
+        console.log('audio name', audio_name);
+    } else {
+        // console.log('nope');
+    }
   });
 
   audio_dl.stderr.on('data', (data) => {
@@ -48,7 +60,8 @@ video_dl.on('close',  (code) => {
   audio_dl.on('close', (code) => {
       console.log(`audio dl exited with code ${code}`);
 
-      const ffmpeg_cmd = `-i ${name}-video.mkv -i ${name}-audio.mkv -c copy -map 0:v:0 -map 1:a:0 -shortest ${name}-mixed.mkv`;
+      const ffmpeg_cmd = `-i ${video_name} -i ${audio_name} -c copy -map 0:v:0 -map 1:a:0 -acodec aac -shortest -strict experimental output/${name}-mixed.mp4`;
+      console.log('ffmpeg cmd:', ffmpeg_cmd);
       const ffmpeg = cp.spawn('ffmpeg',ffmpeg_cmd.split(' '));
 
       ffmpeg.stdout.on('data', (data) => {
